@@ -31,6 +31,7 @@ import java.util.stream.Stream;
 @Getter
 public class GiveawayApp {
 
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final Instant startInstant;
 
     private final AppConfiguration appConfiguration;
@@ -40,6 +41,9 @@ public class GiveawayApp {
 
     private final GiveawayManager giveawayManager;
     private final CommandManager commandManager;
+
+    private final ExecutorService executorService;
+    private final ScheduledExecutorService scheduledExecutorService;
 
     protected GiveawayApp() {
         this.startInstant = Instant.now();
@@ -63,8 +67,8 @@ public class GiveawayApp {
 
         int availableProcessors = Runtime.getRuntime().availableProcessors();
 
-        ExecutorService executorService = Executors.newFixedThreadPool(availableProcessors);
-        ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(availableProcessors);
+        this.executorService = Executors.newFixedThreadPool(availableProcessors);
+        this.scheduledExecutorService = Executors.newScheduledThreadPool(availableProcessors);
 
         /* Services */
         this.mongoClientService = new MongoClientService(this.appConfiguration.getDatabaseConfiguration());
@@ -77,7 +81,7 @@ public class GiveawayApp {
         this.commandManager.registerCommands();
 
         /* Tasks */
-        scheduledExecutorService.scheduleWithFixedDelay(new GiveawayExpireTask(this.discordApi, this.giveawayManager), 1L, 1L, TimeUnit.SECONDS);
+        this.scheduledExecutorService.scheduleWithFixedDelay(new GiveawayExpireTask(this.discordApi, this.giveawayManager), 1L, 1L, TimeUnit.SECONDS);
 
         /* Listeners */
         Stream.of(
@@ -86,17 +90,46 @@ public class GiveawayApp {
                 new SlashCommandListener(this.commandManager)
         ).forEach(discordApi::addListener);
 
+        /* Shutdown hook */
+        Runtime.getRuntime().addShutdownHook(new Thread(this::onShutdown));
+
+        this.logger.info("Application ready.");
+
         this.discordApi.updateActivity(
                 this.appConfiguration.getActivityType(),
                 this.appConfiguration.getActivityName()
         );
 
-        Logger logger = LoggerFactory.getLogger(this.getClass());
-
-        logger.info("Application ready.");
-
         if (this.discordApi.getServers().isEmpty()) {
-            logger.info("Invite me using: " + this.discordApi.createBotInvite());
+            this.logger.info("Invite me using: " + this.discordApi.createBotInvite());
         }
+    }
+
+    public void onShutdown() {
+        this.logger.info("Disabling application...");
+        this.logger.info("Disabling tasks...");
+
+        this.executorService.shutdown();
+        this.scheduledExecutorService.shutdown();
+
+        try {
+            if (!this.executorService.awaitTermination(5L, TimeUnit.SECONDS)) {
+                this.executorService.shutdownNow();
+            }
+
+            if (this.scheduledExecutorService.awaitTermination(5L, TimeUnit.SECONDS)) {
+                this.scheduledExecutorService.shutdownNow();
+            }
+
+            this.logger.info("Disabled all tasks.");
+        } catch (InterruptedException interruptedException) {
+            this.logger.error("Exception while disabling tasks", interruptedException);
+        }
+
+        this.logger.info("Closing database connection...");
+
+        this.mongoClientService.close();
+
+        this.logger.info("Successfully disabled application.");
     }
 }

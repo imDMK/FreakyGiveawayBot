@@ -62,6 +62,11 @@ public class MongoClientService {
             this.mongoDatabase.runCommand(ping);
         } catch (MongoException exception) {
             log.error("Error while trying to connect database", exception);
+            System.exit(0);
         }
+    }
+
+    public void close() {
+        this.mongoClient.close();
     }
 }
