@@ -110,7 +110,7 @@ public class GiveawayEndCommand extends Command {
 
                     embedMessage.setDescription("Nie znaleziono wiadomości.");
                     embedMessage.createImmediateResponder(interaction, true);
-                    return null; //Don't get exception - message does not exists
+                    return null; //Don't get exception - message does not exist
                 });
     }
 }

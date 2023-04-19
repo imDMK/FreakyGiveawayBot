@@ -104,12 +104,10 @@ public class GiveawayManager extends GiveawayMap {
     }
 
     public Optional<Giveaway> getOrElseFind(long messageId) {
-        if (this.get(messageId).isPresent()) {
-            return this.get(messageId);
-        }
-
         return Optional.ofNullable(
-                this.giveawayMongoCollection.find(this.getFilter(messageId)).first()
+                this.get(messageId).orElseGet(
+                        () -> this.giveawayMongoCollection.find().first()
+                )
         );
     }
 

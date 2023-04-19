@@ -48,7 +48,9 @@ public class GiveawayCreateCommand extends Command {
 
     @Override
     public void execute(SlashCommandInteraction interaction, Server server, User user) {
-        ServerTextChannel serverTextChannel = interaction.getArgumentChannelValueByName("channel").orElseThrow().asServerTextChannel().orElseThrow();
+        ServerTextChannel serverTextChannel = interaction.getArgumentChannelValueByName("channel").orElseThrow()
+                .asServerTextChannel().orElseThrow();
+
         String award = interaction.getArgumentStringValueByName("award").orElseThrow();
         String expire = interaction.getArgumentStringValueByName("expire").orElseThrow();
         int winners = interaction.getArgumentLongValueByName("winners").orElseThrow().intValue();
@@ -70,8 +72,8 @@ public class GiveawayCreateCommand extends Command {
             return;
         }
 
-        Optional<Instant> instantOptional = StringUtil.toInstant(expire);
-        if (instantOptional.isEmpty()) {
+        Optional<Instant> expireOptional = StringUtil.toInstant(expire);
+        if (expireOptional.isEmpty()) {
             EmbedMessage embedMessage = new EmbedMessage(server).error();
 
             embedMessage.setDescription("Podano nieprawidłowy czas trwania konkursu.");
@@ -79,7 +81,7 @@ public class GiveawayCreateCommand extends Command {
             return;
         }
 
-        Date expireDate = Date.from(instantOptional.get());
+        Date expireDate = Date.from(expireOptional.get());
 
         InteractionOriginalResponseUpdater responseUpdater = interaction.respondLater(true).join();
 
