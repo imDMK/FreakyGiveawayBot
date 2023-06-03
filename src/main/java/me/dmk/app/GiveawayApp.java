@@ -105,7 +105,7 @@ public class GiveawayApp {
         }
     }
 
-    public void onShutdown() {
+    protected void onShutdown() {
         this.logger.info("Disabling application...");
         this.logger.info("Disabling tasks...");
 
