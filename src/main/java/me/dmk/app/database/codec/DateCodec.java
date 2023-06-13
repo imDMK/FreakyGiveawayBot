@@ -20,8 +20,8 @@ public class DateCodec implements Codec<Date> {
     }
 
     @Override
-    public void encode(BsonWriter writer, Date value, EncoderContext encoderContext) {
-        writer.writeInt64(value.getTime());
+    public void encode(BsonWriter writer, Date date, EncoderContext encoderContext) {
+        writer.writeInt64(date.getTime());
     }
 
     @Override
