@@ -6,6 +6,8 @@ import me.dmk.app.giveaway.GiveawayManager;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.entity.channel.ServerTextChannel;
 import org.javacord.api.entity.server.Server;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
@@ -16,6 +18,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class GiveawayExpireTask implements Runnable {
 
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
     private final DiscordApi discordApi;
     private final GiveawayManager giveawayManager;
 
@@ -25,7 +29,9 @@ public class GiveawayExpireTask implements Runnable {
             Optional<Server> serverOptional = this.discordApi.getServerById(giveaway.getServerId());
             if (serverOptional.isEmpty()) {
                 this.giveawayManager.deleteOne(giveaway);
-                continue;
+
+                this.logger.debug("Deleted giveaway due to the server is invalid, giveaway: " + giveaway);
+                return;
             }
 
             Server server = serverOptional.get();
@@ -33,10 +39,19 @@ public class GiveawayExpireTask implements Runnable {
             Optional<ServerTextChannel> serverTextChannelOptional = server.getTextChannelById(giveaway.getChannelId());
             if (serverTextChannelOptional.isEmpty()) {
                 this.giveawayManager.deleteOne(giveaway);
+
+                this.logger.debug("Deleted giveaway due to the channel is invalid, giveaway: " + giveaway);
                 return;
             }
 
-            final ServerTextChannel serverTextChannel = serverTextChannelOptional.get();
+            ServerTextChannel serverTextChannel = serverTextChannelOptional.get();
+
+            if (!serverTextChannel.canYouSee() || !serverTextChannel.canYouWrite()) {
+                this.giveawayManager.deleteOne(giveaway);
+
+                this.logger.debug("Deleted giveaway due to I don't have permission to edit giveaway message, giveaway: " + giveaway);
+                return;
+            }
 
             serverTextChannel.getMessageById(giveaway.getMessageId())
                     .thenAcceptAsync(message ->
@@ -44,7 +59,9 @@ public class GiveawayExpireTask implements Runnable {
                     )
                     .exceptionallyAsync(throwable -> {
                         this.giveawayManager.deleteOne(giveaway);
-                        return null; //Don't get exception - message deleted
+
+                        this.logger.debug("Deleted giveaway due to the message is invalid, giveaway: " + giveaway);
+                        return null; //Don't get exception - message invalid
                     });
         }
     }
