@@ -13,7 +13,6 @@ import me.dmk.app.listener.button.ButtonInteractionListener;
 import me.dmk.app.task.GiveawayExpireTask;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
-import org.javacord.api.util.logging.FallbackLoggerConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,8 +54,6 @@ public class GiveawayApp {
             config.saveDefaults();
             config.load(true);
         });
-
-        FallbackLoggerConfiguration.setDebug(this.appConfiguration.isDebug());
 
         this.discordApi = new DiscordApiBuilder()
                 .setToken(this.appConfiguration.getToken())

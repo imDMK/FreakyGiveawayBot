@@ -16,7 +16,5 @@ public class AppConfiguration extends OkaeriConfig {
     public ActivityType activityType = ActivityType.LISTENING;
     public String activityName = "I'm just playing music.";
 
-    public boolean debug = false;
-
     public DatabaseConfiguration databaseConfiguration = new DatabaseConfiguration();
 }
