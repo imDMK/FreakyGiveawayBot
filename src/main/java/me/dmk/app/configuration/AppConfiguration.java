@@ -11,7 +11,7 @@ import org.javacord.api.entity.activity.ActivityType;
 @Getter
 public class AppConfiguration extends OkaeriConfig {
 
-    public String token = "MTA4NzEyNjI5MzQ0NDgzNzUxOA.GuWA8P.hK9G_C1WdAKiMXcTo4NDrlQTJQK1USNTI_aqxA";
+    public String token = "MTA5MDc0MDMyNjExODk5ODA5OQ.GSi-Qb.Wg7vSp95RDURJKlVngZrXJKV8bcp3Uw0rGSyOE";
 
     public ActivityType activityType = ActivityType.LISTENING;
     public String activityName = "I'm just playing music.";
