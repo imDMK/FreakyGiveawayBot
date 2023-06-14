@@ -10,7 +10,7 @@ import lombok.Getter;
 @Getter
 public class DatabaseConfiguration extends OkaeriConfig {
 
-    public boolean authentication = false;
+    public boolean authentication;
 
     public String userName = "";
     public String password = "";
