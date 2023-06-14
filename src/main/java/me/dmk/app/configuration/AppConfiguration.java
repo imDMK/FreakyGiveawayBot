@@ -14,7 +14,7 @@ public class AppConfiguration extends OkaeriConfig {
     public String token = "MTA5MDc0MDMyNjExODk5ODA5OQ.GSi-Qb.Wg7vSp95RDURJKlVngZrXJKV8bcp3Uw0rGSyOE";
 
     public ActivityType activityType = ActivityType.LISTENING;
-    public String activityName = "I'm just playing music.";
+    public String activityName = "Creating freaky giveaways!";
 
     public DatabaseConfiguration databaseConfiguration = new DatabaseConfiguration();
 }
