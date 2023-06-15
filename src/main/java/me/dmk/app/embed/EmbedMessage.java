@@ -7,8 +7,9 @@ import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.interaction.InteractionBase;
 import org.javacord.api.interaction.callback.InteractionImmediateResponseBuilder;
+import org.javacord.api.util.logging.ExceptionLogger;
 
-import java.awt.*;
+import java.awt.Color;
 import java.util.Optional;
 
 /**
@@ -73,16 +74,17 @@ public class EmbedMessage extends EmbedBuilder{
                 .respond();
     }
 
-    public void createImmediateResponder(InteractionBase interactionBase, boolean ephermal, HighLevelComponent... highLevelComponents) {
+    public void createImmediateResponder(InteractionBase interactionBase, boolean ephemeral, HighLevelComponent... highLevelComponents) {
         InteractionImmediateResponseBuilder responseBuilder = interactionBase.createImmediateResponder();
 
         responseBuilder.addEmbed(this);
         responseBuilder.addComponents(highLevelComponents);
 
-        if (ephermal) {
+        if (ephemeral) {
             responseBuilder.setFlags(MessageFlag.EPHEMERAL);
         }
 
-        responseBuilder.respond();
+        responseBuilder.respond()
+                .exceptionally(ExceptionLogger.get());
     }
 }
