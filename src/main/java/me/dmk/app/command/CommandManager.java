@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import me.dmk.app.GiveawayApp;
 import me.dmk.app.command.implementation.GiveawayCreateCommand;
 import me.dmk.app.command.implementation.GiveawayEndCommand;
-import me.dmk.app.command.implementation.GiveawayRerollCommand;
+import me.dmk.app.command.implementation.GiveawayReRollCommand;
 import me.dmk.app.command.implementation.StatusCommand;
 import me.dmk.app.giveaway.GiveawayManager;
 import org.javacord.api.DiscordApi;
@@ -30,7 +30,7 @@ public class CommandManager {
     public void registerCommands() {
         Command giveawayCreateCommand = new GiveawayCreateCommand(this.giveawayManager);
         Command giveawayEndCommand = new GiveawayEndCommand(this.giveawayManager);
-        Command giveawayRerollCommand = new GiveawayRerollCommand(this.giveawayManager);
+        Command giveawayRerollCommand = new GiveawayReRollCommand(this.giveawayManager);
         Command statusCommand = new StatusCommand(this.giveawayApp);
 
         this.register(

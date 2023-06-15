@@ -6,6 +6,7 @@ import me.dmk.app.giveaway.Giveaway;
 import me.dmk.app.giveaway.GiveawayManager;
 import me.dmk.app.util.StringUtil;
 import org.javacord.api.entity.channel.TextChannel;
+import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
 import org.javacord.api.interaction.SlashCommandInteraction;
@@ -35,7 +36,7 @@ public class GiveawayEndCommand extends Command {
     public void execute(SlashCommandInteraction interaction, Server server, User user) {
         String messageIdArgument = interaction.getArgumentStringValueByName("messageId").orElseThrow();
 
-        if (StringUtil.isNotLong(messageIdArgument)) {
+        if (!StringUtil.isLong(messageIdArgument)) {
             EmbedMessage embedMessage = new EmbedMessage(server).error();
 
             embedMessage.setDescription("Podano nieprawidłowe ID.");
@@ -65,8 +66,20 @@ public class GiveawayEndCommand extends Command {
         }
 
         textChannel.getMessageById(messageId)
-                .thenAcceptAsync(message -> {
-                    Optional<Giveaway> giveawayOptional = this.giveawayManager.getOrElseFind(message.getId());
+                .thenAcceptAsync(message ->
+                        this.endGiveaway(interaction, server, message))
+                .exceptionallyAsync(throwable -> {
+                    EmbedMessage embedMessage = new EmbedMessage(server).error();
+
+                    embedMessage.setDescription("Nie znaleziono wiadomości.");
+                    embedMessage.createImmediateResponder(interaction, true);
+                    return null; //Don't get exception - message not exist
+                });
+    }
+
+    private void endGiveaway(SlashCommandInteraction interaction, Server server, Message message) {
+        this.giveawayManager.find(message.getId())
+                .thenAcceptAsync(giveawayOptional -> {
                     if (giveawayOptional.isEmpty()) {
                         EmbedMessage embedMessage = new EmbedMessage(server).error();
 
@@ -97,20 +110,21 @@ public class GiveawayEndCommand extends Command {
                         return;
                     }
 
-                    //End giveaway
                     this.giveawayManager.endGiveaway(giveaway, server, message);
 
-                    //Respond to interaction
                     EmbedMessage embedMessage = new EmbedMessage(server).success();
-
                     embedMessage.setDescription("Zakończono konkurs.");
+
                     embedMessage.createImmediateResponder(interaction, true);
                 }).exceptionallyAsync(throwable -> {
                     EmbedMessage embedMessage = new EmbedMessage(server).error();
+                    embedMessage.setDescription("Wystąpił błąd z bazą danych.");
 
-                    embedMessage.setDescription("Nie znaleziono wiadomości.");
                     embedMessage.createImmediateResponder(interaction, true);
-                    return null; //Don't get exception - message does not exist
+
+                    throwable.printStackTrace();
+                    return null;
                 });
+
     }
 }

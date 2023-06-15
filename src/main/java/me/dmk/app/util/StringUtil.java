@@ -12,15 +12,15 @@ import java.util.Optional;
  */
 
 @UtilityClass
-public class StringUtil {
+public final class StringUtil {
 
-    public boolean isNotLong(String string) {
+    public boolean isLong(String string) {
         try {
              Long.parseLong(string);
         } catch (NumberFormatException numberFormatException) {
-            return true;
+            return false;
         }
-        return false;
+        return true;
     }
 
     public static Optional<Instant> toInstant(String string) {

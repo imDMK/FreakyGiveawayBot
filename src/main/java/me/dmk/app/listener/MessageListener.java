@@ -1,10 +1,12 @@
 package me.dmk.app.listener;
 
 import lombok.AllArgsConstructor;
+import me.dmk.app.giveaway.Giveaway;
 import me.dmk.app.giveaway.GiveawayManager;
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.event.message.MessageDeleteEvent;
 import org.javacord.api.listener.message.MessageDeleteListener;
+import org.javacord.api.util.logging.ExceptionLogger;
 
 import java.util.Optional;
 
@@ -26,7 +28,13 @@ public class MessageListener implements MessageDeleteListener {
 
         Message message = messageOptional.get();
 
-        this.giveawayManager.getOrElseFind(message.getId())
-                .ifPresent(giveawayManager::deleteOne);
+        this.giveawayManager.find(message.getId())
+                .thenAccept(giveaway -> giveaway.ifPresent(this::deleteGiveaway))
+                .exceptionally(ExceptionLogger.get());
+    }
+
+    private void deleteGiveaway(Giveaway giveaway) {
+        this.giveawayManager.delete(giveaway)
+                .exceptionally(ExceptionLogger.get());
     }
 }

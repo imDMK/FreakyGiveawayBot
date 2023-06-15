@@ -9,7 +9,7 @@ import me.dmk.app.database.MongoClientService;
 import me.dmk.app.giveaway.GiveawayManager;
 import me.dmk.app.listener.MessageListener;
 import me.dmk.app.listener.SlashCommandListener;
-import me.dmk.app.listener.button.ButtonInteractionListener;
+import me.dmk.app.listener.ButtonListener;
 import me.dmk.app.task.GiveawayExpireTask;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
@@ -82,7 +82,7 @@ public class GiveawayApp {
 
         /* Listeners */
         Stream.of(
-                new ButtonInteractionListener(this.giveawayManager),
+                new ButtonListener(this.giveawayManager),
                 new MessageListener(this.giveawayManager),
                 new SlashCommandListener(this.commandManager)
         ).forEach(discordApi::addListener);

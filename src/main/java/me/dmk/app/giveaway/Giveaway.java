@@ -25,7 +25,7 @@ public class Giveaway {
 
     private String award;
     private Date expireAt;
-    private Set<Long> participants;
+    private Set<Long> participants = new HashSet<>();
 
     private boolean ended;
 
@@ -37,18 +37,9 @@ public class Giveaway {
 
         this.award = award;
         this.expireAt = expire;
-        this.participants = new HashSet<>();
-    }
-
-    public void addParticipant(long userId) {
-        this.participants.add(userId);
     }
 
     public boolean isParticipant(long userId) {
         return this.participants.contains(userId);
-    }
-
-    public void removeParticipant(long userId) {
-        this.participants.remove(userId);
     }
 }

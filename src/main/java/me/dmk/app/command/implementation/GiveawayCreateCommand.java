@@ -4,25 +4,27 @@ import me.dmk.app.command.Command;
 import me.dmk.app.embed.EmbedMessage;
 import me.dmk.app.giveaway.Giveaway;
 import me.dmk.app.giveaway.GiveawayManager;
-import me.dmk.app.util.EmojiUtil;
 import me.dmk.app.util.GiveawayUtil;
 import me.dmk.app.util.MessageUtil;
 import me.dmk.app.util.StringUtil;
 import org.javacord.api.entity.channel.ChannelType;
 import org.javacord.api.entity.channel.ServerTextChannel;
+import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.MessageBuilder;
 import org.javacord.api.entity.message.component.ActionRow;
-import org.javacord.api.entity.message.component.Button;
+import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
 import org.javacord.api.interaction.SlashCommandInteraction;
 import org.javacord.api.interaction.SlashCommandOption;
 import org.javacord.api.interaction.callback.InteractionOriginalResponseUpdater;
+import org.javacord.api.util.logging.ExceptionLogger;
 
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Created by DMK on 29.03.2023
@@ -86,42 +88,51 @@ public class GiveawayCreateCommand extends Command {
         InteractionOriginalResponseUpdater responseUpdater = interaction.respondLater(true).join();
 
         new MessageBuilder()
-                .append("Tworzenie konkursu...")
+                .setContent("Tworzenie konkursu...")
                 .send(serverTextChannel)
                 .thenAcceptAsync(message -> {
                     Giveaway giveaway = new Giveaway(server, message, award, winners, expireDate);
 
-                    this.giveawayManager.insertOne(giveaway)
-                            .thenAcceptAsync((unused) -> message.createUpdater()
-                                    .setContent(
-                                            ping ? server.getEveryoneRole().getMentionTag() : ""
-                                    )
-                                    .setEmbed(
-                                            GiveawayUtil.getMessageTemplate(server, giveaway)
-                                    )
-                                    .addComponents(
-                                            ActionRow.of(Button.success("giveaway-join", "Weź udział", EmojiUtil.getPartyEmoji()))
-                                    )
-                                    .applyChanges().thenAcceptAsync(m -> {
-                                        EmbedMessage embedMessage = new EmbedMessage(server).success();
-
-                                        embedMessage.setDescription("Stworzono nowy [konkurs](" + MessageUtil.getUrl(server, message) + ").");
-                                        responseUpdater.addEmbed(embedMessage).update();
-                                    }).exceptionallyAsync(throwable -> {
-                                        this.giveawayManager.remove(giveaway);
-                                        this.respondError(responseUpdater, server, throwable);
-                                        message.delete();
-                                        return null;
-                                    })
-                            ).exceptionallyAsync(throwable -> {
-                                this.respondError(responseUpdater, server, throwable);
-                                message.delete();
-                                return null;
-                            });
-                }).exceptionallyAsync(throwable -> {
+                    this.createGiveaway(responseUpdater, server, message, giveaway, ping);
+                })
+                .exceptionally(throwable -> {
                     this.respondError(responseUpdater, server, throwable);
                     return null;
                 });
+    }
+
+    private void createGiveaway(InteractionOriginalResponseUpdater responseUpdater, Server server, Message message, Giveaway giveaway, boolean ping) {
+        this.giveawayManager.add(giveaway)
+                .thenAcceptAsync(unused -> this.updateMessage(server, message, giveaway, ping)
+                        .thenAcceptAsync(m -> {
+                            EmbedBuilder embedBuilder = new EmbedMessage(server)
+                                    .success()
+                                    .setDescription("Stworzno nowy " + MessageUtil.createJumpUrl("konkurs", server, message) + ".");
+
+                            responseUpdater.addEmbed(embedBuilder).update()
+                                    .exceptionally(ExceptionLogger.get());
+                        })
+                        .exceptionally(throwable -> {
+                            this.giveawayManager.delete(giveaway).exceptionally(ExceptionLogger.get());
+                            this.respondError(responseUpdater, server, throwable);
+                            message.delete().exceptionally(ExceptionLogger.get());
+                            return null;
+                        })
+                )
+                .exceptionally(throwable -> {
+                    this.respondError(responseUpdater, server, throwable);
+                    message.delete().exceptionally(ExceptionLogger.get());
+                    return null;
+                });
+
+    }
+
+    private CompletableFuture<Message> updateMessage(Server server, Message message, Giveaway giveaway, boolean ping) {
+        return message.createUpdater()
+                .setContent(ping ? server.getEveryoneRole().getMentionTag() : "")
+                .setEmbed(GiveawayUtil.getMessageTemplate(server, giveaway))
+                .addComponents(ActionRow.of(GiveawayUtil.getGiveawayJoinButton()))
+                .applyChanges();
     }
 
     private void respondError(InteractionOriginalResponseUpdater responseUpdater, Server server, Throwable throwable) {
@@ -130,6 +141,7 @@ public class GiveawayCreateCommand extends Command {
         embedMessage.setDescription("Wystąpił błąd.");
         embedMessage.addField("Szczegóły", throwable.getMessage());
 
-        responseUpdater.addEmbed(embedMessage).update();
+        responseUpdater.addEmbed(embedMessage).update()
+                .exceptionally(ExceptionLogger.get());
     }
 }

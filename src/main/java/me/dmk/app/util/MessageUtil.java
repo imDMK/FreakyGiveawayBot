@@ -9,7 +9,11 @@ import org.javacord.api.entity.server.Server;
  */
 
 @UtilityClass
-public class MessageUtil {
+public final class MessageUtil {
+
+    public static String createJumpUrl(String text, Server server, Message message) {
+        return String.format("[%s](%s)", text, getUrl(server, message));
+    }
 
     public static String getUrl(Server server, Message message) {
         return String.format("https://discordapp.com/channels/%s/%s/%s", server.getIdAsString(), message.getChannel().getIdAsString(), message.getIdAsString());

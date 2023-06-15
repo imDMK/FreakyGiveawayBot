@@ -4,16 +4,16 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Updates;
-import com.mongodb.client.result.DeleteResult;
-import com.mongodb.client.result.UpdateResult;
 import lombok.Getter;
 import me.dmk.app.embed.EmbedMessage;
 import me.dmk.app.util.EmojiUtil;
 import me.dmk.app.util.GiveawayUtil;
 import org.bson.conversions.Bson;
 import org.javacord.api.entity.message.Message;
+import org.javacord.api.entity.message.MessageBuilder;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.server.Server;
+import org.javacord.api.util.logging.ExceptionLogger;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -22,14 +22,16 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
-import static com.mongodb.client.model.Filters.*;
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.lt;
 
 /**
  * Created by DMK on 29.03.2023
  */
 
 @Getter
-public class GiveawayManager extends GiveawayMap {
+public class GiveawayManager {
 
     private final MongoCollection<Giveaway> giveawayMongoCollection;
     private final ExecutorService executorService;
@@ -39,76 +41,62 @@ public class GiveawayManager extends GiveawayMap {
         this.executorService = executorService;
     }
 
-    public CompletableFuture<Void> insertOne(Giveaway giveaway) {
-        return CompletableFuture.supplyAsync(() -> {
-            this.giveawayMongoCollection.insertOne(giveaway);
-            this.put(giveaway);
+    public CompletableFuture<Optional<Giveaway>> find(long messageId) {
+        return CompletableFuture.supplyAsync(() ->
+                        Optional.ofNullable(
+                                this.giveawayMongoCollection.find(this.getGiveawayFilter(messageId)).first()
+                        ),
+                this.executorService
+        );
+    }
 
-            return null;
-        }, this.executorService);
+    public CompletableFuture<Void> add(Giveaway giveaway) {
+        return CompletableFuture.runAsync(() ->
+                        this.giveawayMongoCollection.insertOne(giveaway),
+                this.executorService
+        );
+    }
+
+    public CompletableFuture<Void> update(Giveaway giveaway, Bson update) {
+        return CompletableFuture.runAsync(() ->
+                        this.giveawayMongoCollection.updateOne(this.getGiveawayFilter(giveaway), update),
+                this.executorService
+        );
+    }
+
+    public CompletableFuture<Void> delete(Giveaway giveaway) {
+        return CompletableFuture.runAsync(() ->
+                        this.giveawayMongoCollection.deleteOne(this.getGiveawayFilter(giveaway)),
+                this.executorService
+        );
     }
 
     public CompletableFuture<Void> addUserToGiveaway(Giveaway giveaway, long userId) {
-        return CompletableFuture.supplyAsync(() -> {
-            UpdateResult updateResult = this.giveawayMongoCollection.updateOne(
-                    this.getFilter(giveaway.getMessageId()),
-                    Updates.push("participants", userId)
-            );
+        Bson updates = Updates.push("participants", userId);
 
-            if (updateResult.wasAcknowledged()) {
-                giveaway.addParticipant(userId);
-            }
-
-            return null;
-        }, this.executorService);
+        return CompletableFuture.runAsync(() ->
+                        this.giveawayMongoCollection.updateOne(this.getGiveawayFilter(giveaway), updates),
+                this.executorService
+        );
     }
 
     public CompletableFuture<Void> removeUserFromGiveaway(Giveaway giveaway, long userId) {
-        return CompletableFuture.supplyAsync(() -> {
-            UpdateResult updateResult = this.giveawayMongoCollection.updateOne(
-                    this.getFilter(giveaway.getMessageId()),
-                    Updates.pull("participants", userId)
-            );
+        Bson updates = Updates.pull("participants", userId);
 
-            if (updateResult.wasAcknowledged()) {
-                giveaway.removeParticipant(userId);
-            }
-
-            return null;
-        }, this.executorService);
-    }
-
-    public void updateOne(Giveaway giveaway, Bson update) {
-        CompletableFuture.supplyAsync(() -> {
-            this.giveawayMongoCollection.updateOne(
-                    this.getFilter(giveaway.getMessageId()),
-                    update
-            );
-
-            return null;
-        }, this.executorService);
-    }
-
-    public void deleteOne(Giveaway giveaway) {
-        CompletableFuture.supplyAsync(() -> {
-            DeleteResult deleteResult = this.giveawayMongoCollection.deleteOne(
-                    this.getFilter(giveaway.getMessageId())
-            );
-
-            if (deleteResult.wasAcknowledged()) {
-                this.remove(giveaway);
-            }
-
-            return null;
-        }, this.executorService);
-    }
-
-    public Optional<Giveaway> getOrElseFind(long messageId) {
-        return Optional.ofNullable(
-                this.get(messageId).orElseGet(
-                        () -> this.giveawayMongoCollection.find().first()
-                )
+        return CompletableFuture.runAsync(() ->
+                        this.giveawayMongoCollection.updateOne(this.getGiveawayFilter(giveaway), updates),
+                this.executorService
         );
+    }
+
+    public List<Giveaway> getExpiredGiveaways() {
+        long time = Instant.now().plusSeconds(1).plusMillis(500).toEpochMilli();
+
+        Bson filter = and(lt("expireAt", time), eq("ended", false));
+
+        return this.giveawayMongoCollection
+                .find(filter)
+                .into(new ArrayList<>());
     }
 
     public void endGiveaway(Giveaway giveaway, Server server, Message message) {
@@ -125,46 +113,55 @@ public class GiveawayManager extends GiveawayMap {
                     "Wymagane: " + giveaway.getWinners()
             );
 
-            message.createUpdater()
+            new MessageBuilder()
                     .setEmbed(embedMessage)
-                    .removeAllComponents()
-                    .applyChanges();
+                    .replyTo(message)
+                    .send(message.getChannel())
+                    .exceptionally(ExceptionLogger.get());
 
-            this.deleteOne(giveaway);
+            this.delete(giveaway);
             return;
         }
 
-        EmbedBuilder embedBuilder = new EmbedMessage(server).giveaway()
-                .setTitle(EmojiUtil.getPartyEmoji() + " Zakończony konkurs")
-                .addField("Zwycięzcy", String.join("\n", selectedWinners))
-                .addField("Nagroda", giveaway.getAward())
-                .addField("Wzięło udział", String.valueOf(giveaway.getParticipants().size()));
+        Bson updates = Updates.set("ended", true);
 
-        message.createUpdater()
-                .setEmbed(embedBuilder)
-                .removeAllComponents()
-                .setContent(String.join(", ", selectedWinners))
-                .applyChanges()
-                .thenAcceptAsync(msg -> {
-                    this.updateOne(giveaway, Updates.set("ended", true));
-                    giveaway.setEnded(true);
-                }).exceptionallyAsync(throwable -> {
-                    this.deleteOne(giveaway);
+        this.update(giveaway, updates)
+                .thenAcceptAsync(unused -> {
+                    EmbedBuilder embedBuilder = new EmbedMessage(server).giveaway()
+                            .setTitle(EmojiUtil.getPartyEmoji() + " Zakończony konkurs")
+                            .addField("Zwycięzcy", String.join("\n", selectedWinners))
+                            .addField("Nagroda", giveaway.getAward())
+                            .addField("Wzięło udział", String.valueOf(giveaway.getParticipants().size()));
+
+                    message.createUpdater()
+                            .setEmbed(embedBuilder)
+                            .setContent(String.join(", ", selectedWinners))
+                            .removeAllComponents()
+                            .applyChanges()
+                            .exceptionally(ExceptionLogger.get());
+                })
+                .exceptionallyAsync(throwable -> {
+                    EmbedBuilder embedBuilder = new EmbedMessage(server).error();
+
+                    embedBuilder.setDescription("Wystąpił błąd podczas rozlosowywania zwycięzców.");
+                    embedBuilder.addField("Szczegóły", throwable.getMessage());
+
+                    new MessageBuilder()
+                            .setEmbed(embedBuilder)
+                            .replyTo(message)
+                            .send(message.getChannel())
+                            .exceptionally(ExceptionLogger.get());
+
                     throwable.printStackTrace();
                     return null;
                 });
     }
 
-    public List<Giveaway> getExpiredGiveaways() {
-        long currentTime = Instant.now().plusSeconds(1).toEpochMilli();
-        Bson filter = and(lt("expireAt", currentTime), eq("ended", false));
-
-        return this.giveawayMongoCollection
-                .find(filter)
-                .into(new ArrayList<>());
+    public Bson getGiveawayFilter(Giveaway giveaway) {
+        return Filters.eq("messageId", giveaway.getMessageId());
     }
 
-    public Bson getFilter(long messageId) {
+    public Bson getGiveawayFilter(long messageId) {
         return Filters.eq("messageId", messageId);
     }
 }

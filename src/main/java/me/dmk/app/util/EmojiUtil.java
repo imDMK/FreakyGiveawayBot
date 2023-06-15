@@ -7,7 +7,7 @@ import lombok.experimental.UtilityClass;
  */
 
 @UtilityClass
-public class EmojiUtil {
+public final class EmojiUtil {
 
     public static String getPartyEmoji() {
         return "\uD83C\uDF89"; //🎉

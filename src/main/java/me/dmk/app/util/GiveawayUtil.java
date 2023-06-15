@@ -3,6 +3,7 @@ package me.dmk.app.util;
 import lombok.experimental.UtilityClass;
 import me.dmk.app.embed.EmbedMessage;
 import me.dmk.app.giveaway.Giveaway;
+import org.javacord.api.entity.message.component.Button;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.server.Server;
 
@@ -16,15 +17,19 @@ import java.util.Set;
  */
 
 @UtilityClass
-public class GiveawayUtil {
+public final class GiveawayUtil {
 
     public static EmbedBuilder getMessageTemplate(Server server, Giveaway giveaway) {
         return new EmbedMessage(server).giveaway()
                 .addField("Nagroda", "**" + giveaway.getWinners() + "x** " + giveaway.getAward())
-                .addField("Zakończy się", "<t:" + giveaway.getExpireAt().toInstant().getEpochSecond() + ":R>");
+                .addField("Zakończy się", convertToDiscordTimestamp(giveaway.getExpireAt().toInstant().getEpochSecond()));
     }
 
-    public List<String> selectWinners(Set<Long> participants, int winners) {
+    public static String convertToDiscordTimestamp(long epochSecond) {
+        return "<t:" + epochSecond + ":R>";
+    }
+
+    public static List<String> selectWinners(Set<Long> participants, int winners) {
         if (participants.size() < winners) {
             return Collections.emptyList();
         }
@@ -37,5 +42,13 @@ public class GiveawayUtil {
         }
 
         return winnerList;
+    }
+
+    public static Button getGiveawayJoinButton() {
+        return Button.success(
+                "giveaway-join",
+                "Weź udział",
+                EmojiUtil.getPartyEmoji()
+        );
     }
 }
