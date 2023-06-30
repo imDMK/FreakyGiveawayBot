@@ -116,7 +116,8 @@ public class GiveawayEndCommand extends Command {
                     embedMessage.setDescription("Zakończono konkurs.");
 
                     embedMessage.createImmediateResponder(interaction, true);
-                }).exceptionallyAsync(throwable -> {
+                })
+                .exceptionallyAsync(throwable -> {
                     EmbedMessage embedMessage = new EmbedMessage(server).error();
                     embedMessage.setDescription("Wystąpił błąd z bazą danych.");
 

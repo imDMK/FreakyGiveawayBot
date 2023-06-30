@@ -24,7 +24,7 @@ public class GiveawayTest {
     }
 
     @DisplayName("Select winners from set")
-    private void selectWinners(int winners, int participants) {
+    void selectWinners(int winners, int participants) {
         Set<Long> participantsSet = new HashSet<>();
 
         for (int i = 0; i < participants; i++) {
